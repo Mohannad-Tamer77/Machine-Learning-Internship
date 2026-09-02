@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Which content pages are worth reviewing first? A rule vs. a cluster model</title>
+<meta name="description" content="A rule-based baseline vs. K-Means clustering for ranking which content pages an SEO reviewer should look at first, on 30,000 anonymized FlyRank content records.">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #fbfaf7;
+    --text: #232323;
+    --muted: #5b5b5b;
+    --accent: #b0521e;
+    --line: #ddd6ca;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 5rem;
+  }
+  h1, h2, h3 { font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif; }
+  h1 {
+    font-size: 1.9rem;
+    line-height: 1.25;
+    margin-bottom: 0.25rem;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+  }
+  h2 {
+    font-size: 1.25rem;
+    border-top: 1px solid var(--line);
+    padding-top: 2rem;
+    margin-top: 2.5rem;
+  }
+  h2:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.4rem; }
+  li { margin-bottom: 0.5rem; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #efe9dd;
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  .abstract {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .abstract h2 { border: none; margin-top: 0; padding-top: 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    font-size: 0.92rem;
+    margin: 1rem 0 0.5rem;
+  }
+  caption { text-align: left; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.4rem; }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 0.45rem 0.6rem;
+    text-align: right;
+  }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: #f1ece1; }
+  figure { margin: 1.5rem 0; text-align: center; }
+  figure img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+  figcaption {
+    font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+  }
+  .note {
+    font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  a { color: var(--accent); }
+  .caveats li { margin-bottom: 0.7rem; }
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1a17;
+      --text: #e9e5da;
+      --muted: #a7a196;
+      --accent: #e2934f;
+      --line: #3a372f;
+      --card: #242220;
+    }
+    code { background: #2e2b25; }
+    thead th { background: #2a2721; }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1a17;
+    --text: #e9e5da;
+    --muted: #a7a196;
+    --accent: #e2934f;
+    --line: #3a372f;
+    --card: #242220;
+  }
+  :root[data-theme="dark"] code { background: #2e2b25; }
+  :root[data-theme="dark"] thead th { background: #2a2721; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Which content pages are worth reviewing first?</h1>
+<p class="subtitle">A transparent rule vs. a cluster model, on 30,000 anonymized content-performance records &middot; FlyRank ML Internship capstone</p>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>Content teams can't manually review every page every cycle, so the question is which pages
+to look at first. This paper compares two ways of answering that: a transparent rule
+(<code>stale_ctr_gap</code> &mdash; a page that's old, visible, ranked, and underperforming
+its own position tier's click-through rate) against a K-Means clustering model trained on
+62 engineered features from the same data. On a held-out test set, the cluster-based ranking
+measured higher precision than the rule baseline at every cutoff checked, under both a random
+split and a split grouped by client &mdash; a directional signal, not a settled result, since
+the gap and the underlying base rate both shifted between the two splits. The practical output
+is a ranked review queue and an archetype-to-action mapping, built for a human reviewer to
+triage from, not to act on unsupervised.</p>
+</div>
+
+<h2>Introduction</h2>
+<p>A content team lead or SEO reviewer works a fixed review budget &mdash; a handful of pages
+per cycle, not the whole library. Reviewing a page that didn't need it costs an hour;
+missing one that did keep losing clicks while nobody looked at it. Neither error is
+catastrophic on its own, which is why this is framed as a ranking problem: point reviewers at
+the right end of the queue, not a single automated verdict.</p>
+<p>The approach here is Lane 3 of the internship's task menu: structured content archetype
+clustering &mdash; group pages by shared traits, name the groups, and map each group to a
+default action. That's a deliberately narrower goal than trying to read what a page is
+<em>about</em>; the groups are behavioral (traffic, position, freshness), not topical.</p>
+
+<h2>Data</h2>
+<p>Two releases were touched, for different reasons. An early data-contract check queried the
+FlyRank warehouse release (build v20260703) to verify grain and missingness claims at real
+scale: <code>fact_content_daily_performance</code> for March 2026 had 9,841,378 daily rows, and
+filtering to confirmed Search Console availability dropped 63.3% of them, leaving 3,611,061
+usable rows before aggregation &mdash; a limitation worth stating up front, since any features
+built from that slice would represent roughly 37% of content-days, not the full inventory.</p>
+<p>The modeling work in this paper instead uses the small starter dataset shipped with the
+internship: 30,000 rows, one row per pseudonymized content item across 32 clients, trailing
+90-day metrics. It's smaller but complete for its window, with no availability filtering to
+explain away, and large enough to fit and evaluate a K-Means model honestly.</p>
+<p><code>trend_direction</code> and <code>trend_pct</code> never enter any feature list &mdash;
+the decline label is derived from them, so using them as inputs would be leakage.
+<code>content_id</code> and <code>client_id</code> are pseudonyms, used only for grouping and
+the honest split described below, never as model features. No client name, raw query, or URL
+appears anywhere in this project.</p>
+
+<h2>Methodology</h2>
+<p><strong>Baseline.</strong> A transparent rule, not a model: flag a page if it's visible
+(500+ impressions in 90 days), sitting on page 1 or better, hasn't been touched in 90+ days,
+and its click-through rate trails the median other pages get at the same position tier.
+Two assumptions were checked against the data before trusting the rule: click-through rate
+drops with worse position (confirmed: page-1 median 0.24% &rarr; striking 0.17% &rarr;
+page 3&ndash;5 0.09% &rarr; deep 0.00%), and staleness tracks with worse position (confirmed:
+median position 10.6 at 0&ndash;30 days since update &rarr; 18.6 at 181+ days).</p>
+<p><strong>Model.</strong> K-Means clustering on 21 numeric and 8 one-hot categorical
+features (impressions, clicks, sessions, engagement, position, freshness, content metadata),
+standardized before fitting. The decline label is used only to score and name clusters after
+fitting, never as a clustering input. Silhouette score picked k=2 by a wide margin (0.338 vs.
+roughly 0.17 for every k from 3 to 8 tried) &mdash; a coarser split than the "content
+archetypes" framing implies going in: large pages that are struggling vs. small pages that
+are fine.</p>
+<p><strong>Validation.</strong> Two splits were run and compared on purpose. A plain random
+80/20 split served as the naive comparison; a second run used a client-grouped split
+(holding out roughly 6 of 32 clients entirely), since a random split lets every client appear
+on both sides and can fake skill the model doesn't have. The full attack checklist for label
+leakage passed: no label-derived or sibling columns in the feature lists, no product-flag
+columns (none shipped in this dataset), the split grouped by the repeating entity, and the
+base rate reported next to every metric. A deliberate leakage-injection test (adding the
+label-source column into the clustering pipeline) came back unchanged &mdash; not because the
+test harness was broken, but because K-Means dilutes one column's signal across 62 scaled
+dimensions the way a supervised model would not, confirmed by an isolated check that scoring
+by that column alone gets near-perfect precision.</p>
+
+<h2>Results</h2>
+<table>
+<caption>Precision@k, cluster-based ranking vs. rule baseline, two validation splits</caption>
+<thead>
+<tr><th>Split</th><th>k</th><th>Baseline precision</th><th>Model precision</th><th>Base rate</th></tr>
+</thead>
+<tbody>
+<tr><td>Random 80/20</td><td>25</td><td>0.48</td><td>0.52</td><td>0.545</td></tr>
+<tr><td>Random 80/20</td><td>50</td><td>0.56</td><td>0.64</td><td>0.545</td></tr>
+<tr><td>Random 80/20</td><td>100</td><td>0.59</td><td>0.60</td><td>0.545</td></tr>
+<tr><td>Grouped by client</td><td>25</td><td>0.40</td><td>0.72</td><td>0.511</td></tr>
+<tr><td>Grouped by client</td><td>50</td><td>0.50</td><td>0.70</td><td>0.511</td></tr>
+<tr><td>Grouped by client</td><td>100</td><td>0.50</td><td>0.64</td><td>0.511</td></tr>
+</tbody>
+</table>
+<p>The cluster-based ranking measures higher than the rule baseline at every k, on both
+splits. Three things temper that headline:</p>
+<ol>
+<li>Every client appears on both sides of the random split, so that "model" number may
+partly reflect memorizing client-level patterns rather than generalizing to an unseen
+client.</li>
+<li>The grouped split is a single <code>GroupShuffleSplit</code> holding out a handful of
+clients &mdash; small enough that which clients land in the test set can move the numbers on
+its own, and the base rate shifted too, so the two columns aren't measuring quite the same
+population. Repeated grouped splits, not one, would be needed to call this settled.</li>
+<li>At k=25 on the random split, model precision (0.52) sits below the base rate (0.545)
+&mdash; worse than guessing at that cutoff. The larger cluster ties 22,079 pages to one
+identical score, so a small top-k draw from it is close to random.</li>
+</ol>
+<p>Read together: this is a real, repeated, directional signal that the cluster-based ranking
+may outperform the rule baseline &mdash; not a settled result ready to replace the baseline in
+production.</p>
+
+<figure>
+<img src="img/archetype_sizes.png" alt="Bar chart: high_traffic_underperformer cluster holds 92% of pages, low_volume_steady holds 8%, mapped to default actions improve and monitor respectively.">
+<figcaption>Archetype sizes and their default action. 92% of pages fall into the
+higher-decline-rate, higher-traffic group; 8% into the smaller, steadier group.</figcaption>
+</figure>
+
+<h2>Limitations &amp; honest framing</h2>
+<ul class="caveats">
+<li>No causal claim: this is cross-sectional data, one trailing 90-day snapshot. Nothing here
+shows that refreshing a page causes it to stop declining, only that certain pages look worth
+reviewing given how they compare to their peers right now.</li>
+<li>Client concentration in the baseline queue: 8 of the top 10 rows by baseline score
+belonged to a single client sharing the exact same "last updated" date &mdash; one batch
+content-update event, not eight independent problems.</li>
+<li>The model's advantage over the baseline is directional, not settled, for the reasons in
+the results section above.</li>
+<li>Coarse clustering: the two groups found are closer to "big pages, struggling" vs. "small
+pages, fine" than a rich taxonomy of content types.</li>
+<li>Scoring by cluster average loses per-page information &mdash; every page in a cluster
+gets the identical score, so the three worst individual misses were all pages that looked
+fine on their own (two sat in the top 3 search positions) but inherited their cluster's
+high-decline-rate score.</li>
+<li>Single vendor, single 90-day window, 32 clients: findings may not generalize to a
+different time period, industry mix, or client base.</li>
+</ul>
+
+<h2>Ranked recommendations</h2>
+<ul>
+<li>Rank pages with a positive baseline score (stale, visible, ranked, underperforming their
+own tier's click-through rate) to the top of the review queue; give every other page a
+default action from its cluster archetype.</li>
+<li>Archetype-to-action mapping: <code>high_traffic_underperformer</code> (bigger audience,
+worse position and click-through rate, higher observed decline rate) &rarr; <strong>improve</strong>;
+<code>low_volume_steady</code> (smaller audience, better position, higher click-through rate,
+lower decline rate) &rarr; <strong>monitor</strong>.</li>
+<li>Require human review before acting on any flagged page: check for tracking artifacts
+(near-zero click-through rate on high impressions), one-client batch events, brand or
+navigational query intent, and competing search-result features &mdash; all of which can
+produce the same score without a real content problem behind it.</li>
+<li>Never automate: publishing a rewrite, deprioritizing a zero-score page, or presenting the
+archetype label as a client-facing health verdict.</li>
+<li>Re-run on the normal reporting cadence; investigate if the flagged count or base rate
+swings sharply between runs, or when a new client is onboarded whose pages may not fit
+either archetype.</li>
+</ul>
+
+<h2>Reproducibility</h2>
+<p>Everything here can be re-run from a fresh clone of the project repository, in order:
+<code>work/notebooks/w04_baseline_score.ipynb</code> (baseline),
+<code>w05_model.ipynb</code> (model, random split),
+<code>w06_validation_audit.ipynb</code> (grouped split, leakage audit, claim rewrite),
+<code>w07_action_playbook.ipynb</code> (ranked queue export), and
+<code>capstone.ipynb</code> (this paper's source, mirrored). Random seed 42 throughout.
+The exact source repository, with every notebook, is linked below.</p>
+
+<h2>The FlyRank content problem this answers</h2>
+<p>FlyRank's content teams manage refresh decisions across dozens of clients with limited
+reviewer time per cycle. This project is a case study in one narrow piece of that problem:
+given a snapshot of performance data, which pages should a reviewer open first, and can an
+unsupervised grouping point at the same pages a simple rule already does &mdash; cheaply
+enough to run every cycle, and honestly enough to trust the difference it finds.</p>
+
+<footer>
+<p>Built on the FlyRank ML Internship dataset &mdash; internship program:
+<a href="https://flyrank.ai" target="_blank" rel="noopener">flyrank.ai</a>.</p>
+<p>Source repository, notebooks, and full validation detail:
+<a href="https://github.com/Mohannad-Tamer77/Machine-Learning-Internship" target="_blank" rel="noopener">github.com/Mohannad-Tamer77/Machine-Learning-Internship</a>.</p>
+</footer>
+
+</main>
+</body>
+</html>
