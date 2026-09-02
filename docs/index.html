@@ -135,8 +135,9 @@
 
 <div class="abstract">
 <h2>Abstract</h2>
-<p>Content teams can't manually review every page every cycle, so the question is which pages
-to look at first. This paper compares two ways of answering that: a transparent rule
+<p>FlyRank's content teams manage refresh decisions across dozens of clients with limited
+reviewer time per cycle, and can't manually look at every page every cycle &mdash; so the
+question is which pages to look at first. This paper compares two ways of answering that: a transparent rule
 (<code>stale_ctr_gap</code> &mdash; a page that's old, visible, ranked, and underperforming
 its own position tier's click-through rate) against a K-Means clustering model trained on
 62 engineered features from the same data. On a held-out test set, the cluster-based ranking
@@ -148,11 +149,12 @@ triage from, not to act on unsupervised.</p>
 </div>
 
 <h2>Introduction</h2>
-<p>A content team lead or SEO reviewer works a fixed review budget &mdash; a handful of pages
-per cycle, not the whole library. Reviewing a page that didn't need it costs an hour;
-missing one that did keep losing clicks while nobody looked at it. Neither error is
-catastrophic on its own, which is why this is framed as a ranking problem: point reviewers at
-the right end of the queue, not a single automated verdict.</p>
+<p>This is a case study built directly on that FlyRank problem: a content team lead or SEO
+reviewer works a fixed review budget &mdash; a handful of pages per cycle, not the whole
+library. Reviewing a page that didn't need it costs an hour; missing one that did keep
+losing clicks while nobody looked at it. Neither error is catastrophic on its own, which is
+why this is framed as a ranking problem: point reviewers at the right end of the queue, not a
+single automated verdict.</p>
 <p>The approach here is Lane 3 of the internship's task menu: structured content archetype
 clustering &mdash; group pages by shared traits, name the groups, and map each group to a
 default action. That's a deliberately narrower goal than trying to read what a page is
@@ -290,12 +292,11 @@ either archetype.</li>
 <code>capstone.ipynb</code> (this paper's source, mirrored). Random seed 42 throughout.
 The exact source repository, with every notebook, is linked below.</p>
 
-<h2>The FlyRank content problem this answers</h2>
-<p>FlyRank's content teams manage refresh decisions across dozens of clients with limited
-reviewer time per cycle. This project is a case study in one narrow piece of that problem:
-given a snapshot of performance data, which pages should a reviewer open first, and can an
-unsupervised grouping point at the same pages a simple rule already does &mdash; cheaply
-enough to run every cycle, and honestly enough to trust the difference it finds.</p>
+<h2>Closing note</h2>
+<p>This project stays narrow on purpose: one piece of FlyRank's content-review problem, not
+all of it. Given a snapshot of performance data, which pages should a reviewer open first,
+and can an unsupervised grouping point at the same pages a simple rule already does &mdash;
+cheaply enough to run every cycle, and honestly enough to trust the difference it finds.</p>
 
 <footer>
 <p>Built on the FlyRank ML Internship dataset &mdash; internship program:
